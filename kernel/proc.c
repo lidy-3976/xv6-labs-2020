@@ -113,6 +113,12 @@ found:
     return 0;
   }
 
+  // Allocate a xfram page for the Alarm trap
+  if((p->xframe = (struct trapframe *)kalloc()) == 0){
+    release(&p->lock);
+    return 0;
+  }
+
   // An empty user page table.
   p->pagetable = proc_pagetable(p);
   if(p->pagetable == 0){
@@ -120,6 +126,11 @@ found:
     release(&p->lock);
     return 0;
   }
+
+  p->interval = 0;
+  p->left_ticks = 0;
+  p->handler = 0;
+  p->outstanding = 1;
 
   // Set up new context to start executing at forkret,
   // which returns to user space.
@@ -149,6 +160,15 @@ freeproc(struct proc *p)
   p->chan = 0;
   p->killed = 0;
   p->xstate = 0;
+
+  if(p->xframe)
+    kfree((void*)p->xframe);
+  p->xframe = 0;
+
+  p->interval = 0;
+  p->outstanding = 0;
+  p->handler = 0;
+  p->left_ticks = 0;
   p->state = UNUSED;
 }
 
@@ -637,6 +657,25 @@ kill(int pid)
     release(&p->lock);
   }
   return -1;
+}
+
+int
+sigalarm(int interval, void (*handler)())
+{
+  struct proc *p = myproc();
+  p->interval = interval;
+  p->handler = handler;
+  p->left_ticks = interval;
+  return 0;
+}
+
+int 
+sigreturn(void)
+{
+  struct proc *p = myproc();
+  *p->trapframe = *p->xframe;
+  p->outstanding = 1; // valid again
+  return 0;
 }
 
 // Copy to either a user address, or kernel address,

@@ -103,4 +103,11 @@ struct proc {
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
+
+  int interval;                // alarm interval
+  void (*handler)();           // jump to the handler function
+  int left_ticks;              // how many ticks are left untill the next call
+  int outstanding;             // if the process has a timer outstanding  0 is invalid 1 is valid
+  struct trapframe* xframe;    // make sure the process return to the address at which it was time interrupted
+  
 };

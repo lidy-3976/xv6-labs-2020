@@ -77,8 +77,17 @@ usertrap(void)
     exit(-1);
 
   // give up the CPU if this is a timer interrupt.
-  if(which_dev == 2)
+  if(which_dev == 2) {
+    if(p->interval != 0 && p->outstanding == 1) {
+      if(--p->left_ticks == 0) {
+        p->left_ticks = p->interval;
+        *p->xframe = *p->trapframe; // 运行到这里说明是因为时钟中断 如果不保存陷阱帧，sigreturn后返回不到test0的上下文
+        p->trapframe->epc = (uint64)p->handler;
+        p->outstanding = 0; // invalid until sigreturn
+      }
+    }
     yield();
+  }
 
   usertrapret();
 }

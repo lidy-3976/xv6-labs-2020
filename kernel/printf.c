@@ -132,3 +132,14 @@ printfinit(void)
   initlock(&pr.lock, "pr");
   pr.locking = 1;
 }
+
+void backtrace()
+{
+  printf("backtrace:\n");
+  uint64 fp = r_fp(); // 读取当前正在执行函数的栈帧的开始地址
+  while (PGROUNDDOWN(fp) != PGROUNDUP(fp)) {
+    uint64 ra = *(uint64*)(fp - 8); // fp - 8位置存储返回地址
+    printf("%p\n", (uint64*)ra);
+    fp = *(uint64*)(fp - 16); // fp - 16位置存储被保存的上一层栈帧的开始地址
+  }
+}
